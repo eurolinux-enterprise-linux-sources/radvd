@@ -1,0 +1,35 @@
+diff --git a/radvd.8.man b/radvd.8.man
+index 0310150..c31d626 100644
+--- a/radvd.8.man
++++ b/radvd.8.man
+@@ -71,6 +71,9 @@ This option disables privilege separation, and as a result,
+ the non-privileged radvd process does not have permissions to
+ change interface configuration.
+ .TP
++.BR "\-n" , " \-\-nodaemon"
++Prevent the daemonizing.
++.TP
+ .BR "\-c" , " \-\-configtest"
+ Test configuration and do startup tests and then exit.
+ .TP
+diff --git a/radvd.c b/radvd.c
+index 7cadf16..a241779 100644
+--- a/radvd.c
++++ b/radvd.c
+@@ -42,6 +42,7 @@ char usage_str[] = {
+ "  -p, --pidfile=PATH     Sets the pid file.\n"
+ "  -t, --chrootdir=PATH   Chroot to the specified path.\n"
+ "  -u, --username=USER    Switch to the specified user.\n"
++"  -s, --singleprocess    Disable privilege separation.\n"
+ "  -n, --nodaemon         Prevent the daemonizing.\n"
+ #ifdef HAVE_NETLINK
+ "  -L, --disablenetlink     Disable netlink feature\n"
+@@ -137,7 +138,7 @@ main(int argc, char *argv[])
+ 	pidfile = PATH_RADVD_PID;
+ 
+ 	/* parse args */
+-#define OPTIONS_STR "d:C:l:m:p:t:u:vhcsn"
++#define OPTIONS_STR "d:C:l:m:f:p:t:u:vhcsn"
+ #ifdef HAVE_GETOPT_LONG
+ 	while ((c = getopt_long(argc, argv, OPTIONS_STR, prog_opt, &opt_idx)) > 0)
+ #else

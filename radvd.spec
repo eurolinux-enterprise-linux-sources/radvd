@@ -1,7 +1,7 @@
 Summary:    A Router Advertisement daemon
 Name:       radvd
 Version:    1.9.2
-Release:    3%{?dist}
+Release:    7%{?dist}
 # The code includes the advertising clause, so it's GPL-incompatible
 License:    BSD with advertising
 Group:      System Environment/Daemons
@@ -9,6 +9,7 @@ URL:        http://www.litech.org/radvd/
 Source0:    %{url}dist/%{name}-%{version}.tar.gz
 Source1:    radvd-tmpfs.conf
 Source2:    radvd.service
+Patch0:     radvd-1.9.2-cli-man-help.patch
 BuildRequires:      byacc
 BuildRequires:      flex
 BuildRequires:      flex-static
@@ -33,6 +34,8 @@ services.
 
 %prep
 %setup -q
+%patch0 -p1 -F2 -b .cli-man-help
+
 for F in CHANGES; do
     iconv -f iso-8859-1 -t utf-8 < "$F" > "${F}.new"
     touch -r "$F" "${F}.new"
@@ -40,7 +43,7 @@ for F in CHANGES; do
 done
 
 %build
-export CFLAGS="$RPM_OPT_FLAGS -fPIE" 
+export CFLAGS="$RPM_OPT_FLAGS -fPIE -fno-strict-aliasing" 
 export LDFLAGS='-pie -Wl,-z,relro,-z,now,-z,noexecstack,-z,nodlopen'
 %configure --with-pidfile=%{_localstatedir}/run/radvd/radvd.pid
 make %{?_smp_mflags} 
@@ -88,6 +91,18 @@ exit 0
 %{_sbindir}/radvdump
 
 %changelog
+* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1.9.2-7
+- Mass rebuild 2014-01-24
+
+* Thu Jan 02 2014 Pavel Šimerda <psimerda@redhat.com> - 1.9.2-6
+- Resolves: #1045179 - use -fno-strict-aliasing for radvd
+
+* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 1.9.2-5
+- Mass rebuild 2013-12-27
+
+* Tue Dec 10 2013 Pavel Šimerda <psimerda@redhat.com> - 1.9.2-4
+- Resolves: #948863 - man page scan results for radvd
+
 * Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.9.2-3
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
 
