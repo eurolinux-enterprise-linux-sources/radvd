@@ -1,7 +1,7 @@
 Summary:    A Router Advertisement daemon
 Name:       radvd
 Version:    1.9.2
-Release:    7%{?dist}
+Release:    9%{?dist}
 # The code includes the advertising clause, so it's GPL-incompatible
 License:    BSD with advertising
 Group:      System Environment/Daemons
@@ -58,8 +58,7 @@ mkdir -p $RPM_BUILD_ROOT%{_unitdir}
 install -m 644 redhat/radvd.conf.empty $RPM_BUILD_ROOT%{_sysconfdir}/radvd.conf
 install -m 644 redhat/radvd.sysconfig $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/radvd
 
-install -d -m 755 $RPM_BUILD_ROOT%{_sysconfdir}/tmpfiles.d
-install -p -m 644 %{SOURCE1} $RPM_BUILD_ROOT%{_sysconfdir}/tmpfiles.d/radvd.conf
+install -D -p -m 644 %{SOURCE1} $RPM_BUILD_ROOT%{_tmpfilesdir}/radvd.conf
 install -m 644 %{SOURCE2} ${RPM_BUILD_ROOT}%{_unitdir}
 
 %postun
@@ -83,7 +82,7 @@ exit 0
 %{_unitdir}/radvd.service
 %config(noreplace) %{_sysconfdir}/radvd.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/radvd
-%config(noreplace) %{_sysconfdir}/tmpfiles.d/radvd.conf
+%config(noreplace) %{_tmpfilesdir}/radvd.conf
 %dir %attr(-,radvd,radvd) %{_localstatedir}/run/radvd/
 %doc radvd.conf.example
 %{_mandir}/*/*
@@ -91,6 +90,16 @@ exit 0
 %{_sbindir}/radvdump
 
 %changelog
+* Tue Sep 08 2015 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
+- Eliminated rpmbuild "bogus date" error due to inconsistent weekday,
+  by assuming the date is correct and changing the weekday.
+
+* Mon Aug 17 2015 Pavel Šimerda <psimerda@redhat.com> - 1.9.2-9
+- Related: #1180991 - rebuilt
+
+* Thu Apr 16 2015 Pavel Šimerda <psimerda@redhat.com> - 1.9.2-8
+- Resolves: #1180991 - use /usr/lib/tmpfiles.d instead of /etc/tmpfiles.d
+
 * Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1.9.2-7
 - Mass rebuild 2014-01-24
 
