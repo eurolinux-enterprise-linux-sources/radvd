@@ -1,3 +1,187 @@
+2017/07/03	Release v2.17
+
+2017/07/01	Fix STDERR_SYSLOG log level bug.
+		Always close stdout and stderr when daemonizing.
+
+2017/03/15	Implement RFC 7772 Section 5.1.1, 5.1.2, defaulted to on. <Robin H. Johnson>
+
+2017/02/04	clang-format the code
+
+2017/02/01	Release v2.16
+
+2017/01/10	Fixed ExecReload in systemd service file <Harald Albrecht>
+
+2016/11/11	Allow selection of RA source address. <Robin H. Johnson>
+
+2016/09/24	Release v2.15
+
+2016/09/18	Moved auto prefix code from config file parse to send_ra.
+
+2016/08/08	Merged ARPHRD_6LOWPAN netlink query from <Alexander Aring>
+		Add systemd service file <Craig Andrews>
+
+2016/07/05	Fixed bug in new vs old address list comparison when
+		responding to netlink messages.
+		Release v2.14
+
+2016/04/02	Fix netlink bug where RADVD reacts to RTM_NEWADDR
+		messages when there weren't actually any new addresses
+		to be found.  Those RTM_NEWADDR messages were only
+		sent when NetworkManager was running (which is just
+		about always).
+		Release v2.13
+
+2016/02/01	process.c: fixup ugly overflow check
+		radvd.conf.5.man: minor fixup to 'client' option
+		radvd.conf.5.man: update abro usage
+		gram.y: deprecate abro prefix length
+		device-linux.c: IEEE 802.15.4 musl libc fix
+		send.c: seconds/miliseconds comparison fix
+		send.c: preferred lifetime RFC 4862, 5.5.3 fix
+		defaults.h: remaining lifetime RFC 4862 fix
+		radvdump: show routes with prefixlen > 64
+
+
+2015/04/09	added --without-check option to configure <James Guthrie>
+		Release v2.11
+
+2015/01/22	Reverted random delay work because it broke detecting new
+			interfaces in a timely manor. <Lonnie>
+		Release v2.10
+		Drop md5sum and bz2 packages
+
+2014/12/31	Fix new interface coming up such that it is setup immediately.
+		This fixes a regression in the 2.x branch from 1.x <volker>
+
+2014/11/16	Fix missing random delay before sending RA.
+		Fix config file crash when no auto-select prefixes are found
+			debian-bug-716831
+
+2014/10/06	Remove autoconf=0 code
+		Fix memory leak after getting SIGHUP
+		release v2.8
+
+2014/09/10	Move privsep after daemonp call to avoid doing the same
+			things deamonp does in privsep.
+		release v2.7
+
+2014/09/03	Write PID file from child, signal parent when complete
+		Normalize some logging to read like headlines
+		release v2.6
+
+2014/08/04	release v2.5
+
+2014/06/03	Added autogen.sh
+
+2014/08/02	Limit non-ready interface to a much longer min timeout
+		Move disable_ipv6_autoconfig to privsep
+		cleanup some logging
+		cleaned up some memory leaks
+
+2014/07/30	Add test_rdnss.conf to DIST_EXTRA
+		Expand make packages rule to extract the tar.gz package
+			and do a make check on it to (hopefully) prevent
+			forgetting to update DIST_EXTRA in the future.
+		release v2.4
+
+2014/07/30	Fix length field in RDNSS
+		Fix --test option in check_all
+		release v2.3
+
+2014/07/29	Netlink, setup_iface fix for down interface coming up <Lonnie>
+		release v2.2
+
+2014/07/20	Revert bison locations in order to support byacc
+		Amend DIST_EXTRA with the make check files
+		release v2.1
+
+2014/07/12	Add command line option parsing to the check unit test application
+		release v2.0
+
+2014/07/10	Add make check target based on the check unit testing framework
+		release v2.0-rc5
+
+2014/06/28	Add check in configure.ac for clock_gettime <Gustavo Zacarias>
+		split send_ra into smaller function
+		orgainize struct Interface with nested structures
+		release v2.0-rc4
+
+2014/06/16	Makefile.am: Fix out of tree builds
+		Makefile.am: disable struct-overflow warning
+		time: Use clock_gettime and monotonic clock <Markus Pargmann>
+		release v2.0-rc3
+
+2014/06/09	reorder and fix some logging
+
+2014/05/30	add disable_ipv6_autoconfig function so an interface radvd
+			is using won't autoconfig itself using its own advert
+		improved netlink message processing to *only* reinit an
+			interface that changed.
+
+2014/04/10	Add compiler attributes to type check format strings <Cristian Rodríguez>
+
+2014/03/18	release 1.10.0
+
+2014/03/12	dropped --singleprocess option completely
+		cleaned up some spelling error in the man pages
+
+2014/03/07	log valid and preferred lifetimes
+		clean up sllao code and test
+
+2014/03/05	6LoWPAN-ND (RFC6775) support <Bhadram>
+		using ppoll to prevent signal races
+
+2014/02/28	Bug fix 1048653 - UnicastOnly option still sends multicast RA
+
+2014/02/17	Cleaned up Makefile.am
+		added fstack-protector for security
+		fixed CFLAGS warning settings
+		fixed problems in code raised by CFLAGS fix
+
+2014/02/01	fixed some tests which invoked radvd instead of ./radvd
+		added an iface api which hides the linked list implementation
+		added a sorted list (by iface index) to the iface api
+		make globals in gram.y non-global
+
+2014/01/18	add RTMGRP_IPV6_IFADDR processing code to netlink
+		refactoring, simplification and code cleanup
+
+
+2014/01/13	using parser locations
+		the parser can run without root
+		added a 'make check' target
+		reworked the initialization of interfaces <Schiffer>
+		a few global variables are now local
+		logging radvd PIDs
+		using 'indent -linux' code style
+
+2014/01/10	use -no-strict-aliasing
+
+2013/11/20	Fixed attempt to get multiple values in an ioctl
+		improved logging of hardware type
+
+2013/11/17	AdvSendAdvert was being ignored in some cases <Babel>
+
+2013/10/02	releasing 1.9.5
+		minor fix in IPv6 forwarding setting check <akarl10>
+
+2013/10/01	releasing 1.9.4
+
+2013/09/24	Added a Makefile target to generate hashes and a gpg signature
+
+2013/09/07	Netlink processing fix <Nathan Hintz>
+		Correction in IPv6 forwarding setting check <Anand Kumria>
+		fix for kernels with no NETLINK_NO_ENOBUFS defined <Sedat Dilek>
+
+2013/04/13	Force UnicodeOnly if IFF_MULTICAST is unavailable
+		Remove check for IFF_BROADCAST since it isn't used
+
+2013/03/14	Fix for systems without sysctl.h from vapier
+		Updating to version 1.9.3
+		release 1.9.3
+
+2013/03/04	radvdump MTU and route fix by Jean-Jacques
+
 2012/11/20	Replaced pekkas@netcore.fi with reubenhwk@gmail.com
 		Normalized dates in CHANGES to YYYY/MM/DD
 		release 1.9.2

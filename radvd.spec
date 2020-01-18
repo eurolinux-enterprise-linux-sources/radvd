@@ -1,26 +1,29 @@
-Summary:    A Router Advertisement daemon
-Name:       radvd
-Version:    1.9.2
-Release:    9%{?dist}.4
+Summary: A Router Advertisement daemon
+Name: radvd
+Version: 2.17
+Release: 3%{?dist}
 # The code includes the advertising clause, so it's GPL-incompatible
-License:    BSD with advertising
-Group:      System Environment/Daemons
-URL:        http://www.litech.org/radvd/
-Source0:    %{url}dist/%{name}-%{version}.tar.gz
-Source1:    radvd-tmpfs.conf
-Source2:    radvd.service
-Patch0:     radvd-1.9.2-cli-man-help.patch
-Patch1:     radvd-write_pid_file.patch
-BuildRequires:      byacc
-BuildRequires:      flex
-BuildRequires:      flex-static
-BuildRequires:      libdaemon-devel
-BuildRequires:      pkgconfig
-BuildRequires:      systemd-units
-Requires(postun):   systemd-units
-Requires(preun):    systemd-units
-Requires(post):     systemd-units
-Requires(pre):      shadow-utils
+License: BSD with advertising
+Group: System Environment/Daemons
+URL: http://www.litech.org/radvd/
+Source0: %{url}dist/%{name}-%{version}.tar.xz
+Source1: radvd-tmpfs.conf
+Source2: radvd.service
+Patch1:  radvd-werror.patch
+Patch2:  radvd-no_dac_override.patch
+## https://github.com/reubenhwk/radvd/commit/5ad279f48c0f3d94573e3f3c887f86cd10476c2d.patch
+Patch3:  radvd_add_ra_memleak.patch
+
+BuildRequires: bison
+BuildRequires: flex
+BuildRequires: flex-static
+BuildRequires: pkgconfig
+%if 0%{?fedora}
+BuildRequires: check-devel
+%endif
+BuildRequires: systemd-units
+%{?systemd_requires}
+Requires(pre): shadow-utils
 
 %description
 radvd is the router advertisement daemon for IPv6.  It listens to router
@@ -35,8 +38,9 @@ services.
 
 %prep
 %setup -q
-%patch0 -p1 -F2 -b .cli-man-help
-%patch1 -p1 -b .pidfile
+%patch1 -p1 -b .werror
+%patch2 -p1 -b .dac
+%patch3 -p1 -b .add_ra_memleak
 
 for F in CHANGES; do
     iconv -f iso-8859-1 -t utf-8 < "$F" > "${F}.new"
@@ -45,23 +49,33 @@ for F in CHANGES; do
 done
 
 %build
-export CFLAGS="$RPM_OPT_FLAGS -fPIE -fno-strict-aliasing -Werror=all"
+export NOERRORFLAGS="${CFLAGS}"
+export CFLAGS="$RPM_OPT_FLAGS -fPIE -Werror=all -std=c99" 
 export LDFLAGS='-pie -Wl,-z,relro,-z,now,-z,noexecstack,-z,nodlopen'
-%configure --with-pidfile=%{_localstatedir}/run/radvd/radvd.pid
-make %{?_smp_mflags}
+%configure \
+    --disable-silent-rules \
+    --with-pidfile=%{_localstatedir}/run/radvd/radvd.pid
+make %{?_smp_mflags} 
 
 %install
-make DESTDIR=$RPM_BUILD_ROOT install
+make DESTDIR=%{buildroot} install
 
-mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig
-mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/radvd
-mkdir -p $RPM_BUILD_ROOT%{_unitdir}
+mkdir -p %{buildroot}%{_sysconfdir}/sysconfig
+mkdir -p %{buildroot}/%{_localstatedir}/run/radvd
+mkdir -p %{buildroot}%{_unitdir}
 
-install -m 644 redhat/radvd.conf.empty $RPM_BUILD_ROOT%{_sysconfdir}/radvd.conf
-install -m 644 redhat/radvd.sysconfig $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/radvd
+install -m 644 redhat/radvd.conf.empty %{buildroot}%{_sysconfdir}/radvd.conf
+install -m 644 redhat/radvd.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/radvd
 
-install -D -p -m 644 %{SOURCE1} $RPM_BUILD_ROOT%{_tmpfilesdir}/radvd.conf
-install -m 644 %{SOURCE2} ${RPM_BUILD_ROOT}%{_unitdir}
+install -d -m 755 %{buildroot}%{_tmpfilesdir}
+install -p -m 644 %{SOURCE1} %{buildroot}%{_tmpfilesdir}/radvd.conf
+install -m 644 %{SOURCE2} %{buildroot}%{_unitdir}
+
+## RHEL7 has old check
+%if 0%{?fedora}
+%check
+make check
+%endif
 
 %postun
 %systemd_postun_with_restart radvd.service
@@ -84,23 +98,30 @@ exit 0
 %{_unitdir}/radvd.service
 %config(noreplace) %{_sysconfdir}/radvd.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/radvd
-%config(noreplace) %{_tmpfilesdir}/radvd.conf
 %dir %attr(-,radvd,radvd) %{_localstatedir}/run/radvd/
+%config(noreplace) %{_tmpfilesdir}/radvd.conf
 %doc radvd.conf.example
 %{_mandir}/*/*
 %{_sbindir}/radvd
 %{_sbindir}/radvdump
 
 %changelog
-* Thu Apr 12 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-9.4
+* Mon Jun  4 2018 Pavel Zhukov <pzhukov@redhat.com> - 2.17-3
+- Related: #1475983 - Use /var/run instead of /run in EL7
+- Fix coverity reported errors
+
+* Mon Jun  4 2018 Pavel Zhukov <pzhukov@redhat.com> - 2.17-1
+- Resolves: #1475983 - Rebase on 2.17
+
+* Thu Apr 12 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-14
 - Check pid file before running main flow
 - Enable -Werror=all flag
 
-* Wed Apr 11 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-9.3
-- Related: 1564391 - Backport file locking and pidfile removal
+* Wed Apr 11 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-13
+- Related: 1559160 - Backport file locking and pidfile removal
 
-* Thu Mar 22 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-9.2
-- Resolves: #1564391 - Write pid file in nodaemon mode
+* Thu Mar 22 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-12
+- Resolves: 1559160 - Write pid file in nodaemon mode
 - Fix coverity warnings
 
 * Mon Aug 17 2015 Pavel Šimerda <psimerda@redhat.com> - 1.9.2-9
