@@ -1,7 +1,7 @@
 Summary:    A Router Advertisement daemon
 Name:       radvd
 Version:    1.9.2
-Release:    9%{?dist}
+Release:    9%{?dist}.4
 # The code includes the advertising clause, so it's GPL-incompatible
 License:    BSD with advertising
 Group:      System Environment/Daemons
@@ -10,6 +10,7 @@ Source0:    %{url}dist/%{name}-%{version}.tar.gz
 Source1:    radvd-tmpfs.conf
 Source2:    radvd.service
 Patch0:     radvd-1.9.2-cli-man-help.patch
+Patch1:     radvd-write_pid_file.patch
 BuildRequires:      byacc
 BuildRequires:      flex
 BuildRequires:      flex-static
@@ -35,6 +36,7 @@ services.
 %prep
 %setup -q
 %patch0 -p1 -F2 -b .cli-man-help
+%patch1 -p1 -b .pidfile
 
 for F in CHANGES; do
     iconv -f iso-8859-1 -t utf-8 < "$F" > "${F}.new"
@@ -43,10 +45,10 @@ for F in CHANGES; do
 done
 
 %build
-export CFLAGS="$RPM_OPT_FLAGS -fPIE -fno-strict-aliasing" 
+export CFLAGS="$RPM_OPT_FLAGS -fPIE -fno-strict-aliasing -Werror=all"
 export LDFLAGS='-pie -Wl,-z,relro,-z,now,-z,noexecstack,-z,nodlopen'
 %configure --with-pidfile=%{_localstatedir}/run/radvd/radvd.pid
-make %{?_smp_mflags} 
+make %{?_smp_mflags}
 
 %install
 make DESTDIR=$RPM_BUILD_ROOT install
@@ -90,9 +92,16 @@ exit 0
 %{_sbindir}/radvdump
 
 %changelog
-* Tue Sep 08 2015 Scientific Linux Auto Patch Process <SCIENTIFIC-LINUX-DEVEL@LISTSERV.FNAL.GOV>
-- Eliminated rpmbuild "bogus date" error due to inconsistent weekday,
-  by assuming the date is correct and changing the weekday.
+* Thu Apr 12 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-9.4
+- Check pid file before running main flow
+- Enable -Werror=all flag
+
+* Wed Apr 11 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-9.3
+- Related: 1564391 - Backport file locking and pidfile removal
+
+* Thu Mar 22 2018 Pavel Zhukov <pzhukov@redhat.com> - 1.9.2-9.2
+- Resolves: #1564391 - Write pid file in nodaemon mode
+- Fix coverity warnings
 
 * Mon Aug 17 2015 Pavel Šimerda <psimerda@redhat.com> - 1.9.2-9
 - Related: #1180991 - rebuilt

@@ -1,0 +1,170 @@
+diff --git a/radvd.c b/radvd.c
+index 82efe0b..508abd1 100644
+--- a/radvd.c
++++ b/radvd.c
+@@ -17,6 +17,10 @@
+ #include "includes.h"
+ #include "radvd.h"
+ #include "pathnames.h"
++#include <libgen.h>
++#include <sys/file.h>
++#include <stdio.h>
++
+ 
+ #ifdef HAVE_NETLINK
+ #include "netlink.h"
+@@ -99,6 +103,9 @@ int readin_config(char *);
+ int check_conffile_perm(const char *, const char *);
+ const char *get_pidfile(void);
+ void main_loop(void);
++static int write_pid_file(char const *daemon_pid_file_ident, pid_t pid);
++static int open_and_lock_pid_file(char const *daemon_pid_file_ident);
++static void check_pid_file(char const *daemon_pid_file_ident);
+ 
+ int
+ main(int argc, char *argv[])
+@@ -110,6 +117,7 @@ main(int argc, char *argv[])
+ 	char *chrootdir = NULL;
+ 	int configtest = 0;
+ 	int daemonize = 1;
++       int pidfd = 0;
+ #ifdef HAVE_GETOPT_LONG
+ 	int opt_idx;
+ #endif
+@@ -332,6 +340,14 @@ main(int argc, char *argv[])
+ 			exit(1);
+ 		}
+ 		daemon_retval_send(0);
++	} else {
++		pidfd = open_and_lock_pid_file(pidfile);
++		if (0 != write_pid_file(pidfile, getpid())) {
++			flog(LOG_ERR, "failure writing pid file detected");
++			exit(-1);
++		}
++		check_pid_file(pidfile);
++
+ 	}
+ 
+ 	/*
+@@ -347,11 +363,11 @@ main(int argc, char *argv[])
+ 	main_loop();
+ 	flog(LOG_INFO, "sending stop adverts", pidfile);
+ 	stop_adverts();
+-	if (daemonize) {
+-		flog(LOG_INFO, "removing %s", pidfile);
+-		unlink(pidfile);
++	if (!daemonize){
++		close(pidfd);
+ 	}
+-
++	flog(LOG_INFO, "removing %s", pidfile);
++	unlink(pidfile);
+ 	return 0;
+ }
+ 
+@@ -841,3 +857,105 @@ usage(void)
+ 	exit(1);
+ }
+ 
++static int open_pid_file(char const *daemon_pid_file_ident)
++{
++	int pidfd = open(daemon_pid_file_ident, O_SYNC | O_CREAT | O_RDWR, 0644);
++	if (-1 == pidfd) {
++	        flog(LOG_ERR, "unable to open pid file, %s: %s", daemon_pid_file_ident, strerror(errno));
++		exit(-1);
++	} else {
++	        dlog(LOG_DEBUG, 5, "opened pid file %s", daemon_pid_file_ident);
++	}
++       return pidfd;
++}
++
++static int open_and_lock_pid_file(char const *daemon_pid_file_ident)
++{
++	dlog(LOG_DEBUG, 3, "radvd startup PID is %d", getpid());
++
++	int pidfd = open_pid_file(daemon_pid_file_ident);
++
++	int lock = flock(pidfd, LOCK_EX | LOCK_NB);
++	if (0 != lock) {
++		flog(LOG_ERR, "unable to lock pid file, %s: %s", daemon_pid_file_ident, strerror(errno));
++		exit(-1);
++	} else {
++		dlog(LOG_DEBUG, 4, "locked pid file %s", daemon_pid_file_ident);
++	}
++
++	return pidfd;
++}
++
++
++static int write_pid_file(char const *daemon_pid_file_ident, pid_t pid)
++{
++ 	int pidfd = open_pid_file(daemon_pid_file_ident);
++	char pid_str[20] = {""};
++	sprintf(pid_str, "%d", pid);
++	dlog(LOG_DEBUG, 3, "radvd PID is %s", pid_str);
++	size_t len = strlen(pid_str);
++	int rc = write(pidfd, pid_str, len);
++        if (rc != (int)len) {
++	        return -1;
++	}
++        char newline[] = {"\n"};
++	len = strlen(newline);
++	rc = write(pidfd, newline, len);
++	if (rc != (int)len) {
++               close(pidfd);
++		return -1;
++	}
++        rc = fsync(pidfd);
++	if (rc != 0) {
++		dlog(LOG_DEBUG, 4, "failed to fsync pid file: %s", daemon_pid_file_ident);
++	}
++	rc = close(pidfd);
++        if (rc != 0) {
++                dlog(LOG_DEBUG, 4, "failed to close pid file: %s", daemon_pid_file_ident);
++        }
++        char *dirstrcopy = strdup(daemon_pid_file_ident);
++        char *dirstr = dirname(dirstrcopy);
++        int dirfd = open(dirstr, O_RDONLY);
++        if (dirfd == -1){
++           dlog(LOG_DEBUG, 4, "Failed to open directory: %s", dirstr);
++        }
++        rc = fsync(dirfd);
++        if (rc != 0) {
++                dlog(LOG_DEBUG, 4, "failed to fsync pid dir: %s", dirstr);
++        }
++        rc = close(dirfd);
++        if (rc != 0) {
++                dlog(LOG_DEBUG, 4, "failed to close pid dir: %s", dirstr);
++        }
++        free(dirstrcopy);
++        dlog(LOG_DEBUG, 4, "wrote pid %d to pid file: %s", pid, daemon_pid_file_ident);
++        return rc;
++}
++
++
++static void check_pid_file(char const *daemon_pid_file_ident)
++{
++	FILE *pidfile = fopen(daemon_pid_file_ident, "r");
++
++	if (!pidfile) {
++		flog(LOG_ERR, "unable to open pid file, %s: %s", daemon_pid_file_ident, strerror(errno));
++		exit(-1);
++	}
++
++	pid_t pid = -1;
++
++	int rc = fscanf(pidfile, "%d", &pid);
++	fclose(pidfile);
++
++	if (rc != 1) {
++		flog(LOG_ERR, "unable to read pid from pid file: %s", daemon_pid_file_ident);
++		exit(-1);
++	}
++
++	if (pid != getpid()) {
++		flog(LOG_ERR, "pid in file, %s, doesn't match getpid(): %d != %d", daemon_pid_file_ident, pid, getpid());
++		exit(-1);
++	}
++	dlog(LOG_DEBUG, 4, "validated pid file, %s: %d", daemon_pid_file_ident, pid);
++}
++
